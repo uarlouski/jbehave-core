@@ -5,8 +5,11 @@ import static org.jbehave.core.steps.StepCreator.*;
 
 import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Queue;
+import java.util.Stack;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -38,6 +41,8 @@ public class JsonOutput extends PrintStreamOutput {
     private int storyPublishingLevel = 0;
     private boolean stepPublishing = false;
 
+    private final Stack<String> stepKeysStack = new Stack<>();
+
     public JsonOutput(PrintStream output, Keywords keywords) {
         this(output, new Properties(), keywords);
     }
@@ -58,6 +63,32 @@ public class JsonOutput extends PrintStreamOutput {
 
     @Override
     protected String format(String key, String defaultPattern, Object... args) {
+        if (key.contains("beforeScenarioSteps")) {
+            stepKeysStack.push(key);
+        }
+        if (key.contains("afterScenarioSteps")) {
+            stepKeysStack.clear();
+        }
+
+        if (!stepKeysStack.isEmpty() && (ArrayUtils.contains(STEP_KEYS, key) || "beforeStep".equals(key))) {
+            String last = stepKeysStack.peek();
+            if (last.equals("beforeScenarioSteps")) {
+                stepKeysStack.push(key);
+            } else if ("beforeStep".equals(last) && ArrayUtils.contains(STEP_KEYS, key)) {
+                stepKeysStack.push(key);
+            } else if ("beforeStep".equals(last) && "beforeStep".equals(key)) {
+                print("\"steps\": [");
+                stepKeysStack.push(key);
+            } else if (ArrayUtils.contains(STEP_KEYS, last) && "beforeStep".equals(key)) {
+                stepKeysStack.pop();
+            } else if (ArrayUtils.contains(STEP_KEYS, last) && ArrayUtils.contains(STEP_KEYS, key)) {
+                print("]");
+                stepKeysStack.pop();
+                stepKeysStack.pop();
+                stepKeysStack.push(key);
+            }
+        }
+
         if ("beforeGivenStories".equals(key)) {
             givenStoriesLevel++;
         } else if ("afterGivenStories".equals(key)) {
@@ -151,13 +182,14 @@ public class JsonOutput extends PrintStreamOutput {
         patterns.setProperty("givenStory", "'{'\"parameters\": \"{1}\", \"path\": \"{0}\"}");
         patterns.setProperty("givenStoriesEnd", "]");
         patterns.setProperty("afterGivenStories", "}");
-        patterns.setProperty("successful", "'{'\"outcome\": \"successful\", \"value\": \"{0}\"}");
-        patterns.setProperty("ignorable", "'{'\"outcome\": \"ignorable\", \"value\": \"{0}\"}");
-        patterns.setProperty("comment", "'{'\"outcome\": \"comment\", \"value\": \"{0}\"}");
-        patterns.setProperty("pending", "'{'\"outcome\": \"pending\", \"keyword\": \"{1}\", \"value\": \"{0}\"}");
-        patterns.setProperty("notPerformed", "'{'\"outcome\": \"notPerformed\", \"keyword\": \"{1}\", \"value\": \"{0}\"}");
-        patterns.setProperty("failed", "'{'\"outcome\": \"failed\", \"keyword\": \"{1}\", \"value\": \"{0}\", \"failure\": \"{2}\"}");
-        patterns.setProperty("restarted", "'{'\"outcome\": \"restarted\", \"value\": \"{0}\", \"reason\": \"{1}\"}");
+        patterns.setProperty("beforeStep", "'{'");
+        patterns.setProperty("successful", "\"outcome\": \"successful\", \"value\": \"{0}\"}");
+        patterns.setProperty("ignorable", "\"outcome\": \"ignorable\", \"value\": \"{0}\"}");
+        patterns.setProperty("comment", "\"outcome\": \"comment\", \"value\": \"{0}\"}");
+        patterns.setProperty("pending", "\"outcome\": \"pending\", \"keyword\": \"{1}\", \"value\": \"{0}\"}");
+        patterns.setProperty("notPerformed", "\"outcome\": \"notPerformed\", \"keyword\": \"{1}\", \"value\": \"{0}\"}");
+        patterns.setProperty("failed", "\"outcome\": \"failed\", \"keyword\": \"{1}\", \"value\": \"{0}\", \"failure\": \"{2}\"}");
+        patterns.setProperty("restarted", "\"outcome\": \"restarted\", \"value\": \"{0}\", \"reason\": \"{1}\"}");
         patterns.setProperty("restartedStory", "'{'\"story\": '{'\"outcome\": \"restartedStory\", \"value\": \"{0}\", \"reason\": \"{1}\"}}");
         patterns.setProperty("outcomesTableStart", "'{'\"outcomes\": '{'");
         patterns.setProperty("outcomesTableHeadStart", "\"fields\": [");
