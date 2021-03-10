@@ -30,9 +30,9 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-maven-v1-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-maven-
+            ${{ runner.os }}-maven-v1-
 
       - name: Install
         shell: bash
@@ -40,4 +40,6 @@ jobs:
 
       - name: Build
         shell: bash
-        run: mvn install -s settings.xml -P examples --batch-mode -e
+        run: |
+          mvn install -s settings.xml -P examples --batch-mode -e || true
+          cat /home/runner/work/jbehave-core/jbehave-core/examples/weld/target/classes/META-INF/beans.xml
