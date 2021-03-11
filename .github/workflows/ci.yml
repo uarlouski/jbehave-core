@@ -34,12 +34,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-v1-
 
-      - name: Install
-        shell: bash
-        run: mvn install -s settings.xml -DskipTests=true -Dmaven.javadoc.skip=true --batch-mode -e --quiet
-
       - name: Build
         shell: bash
         run: |
-          mvn install -s settings.xml -P examples --batch-mode -e || true
-          cat /home/runner/work/jbehave-core/jbehave-core/examples/weld/target/classes/META-INF/beans.xml
+          mvn -v
